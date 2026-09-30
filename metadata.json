@@ -1,0 +1,6 @@
+{
+  "name": "Allô Dabou Chauffeur",
+  "description": "Application professionnelle pour chauffeurs et livreurs à Dabou : réception des courses, alertes en temps réel et suivi d'itinéraires.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

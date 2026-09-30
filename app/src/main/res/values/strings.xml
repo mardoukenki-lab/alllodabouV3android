@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Allô Dabou Chauffeur</string>
+    <string name="brand_subtitle">Chauffeurs &amp; Livreurs</string>
+    <string name="tab_available_rides">Courses</string>
+    <string name="tab_my_rides">Mes courses</string>
+    <string name="tab_account">Compte</string>
+</resources>

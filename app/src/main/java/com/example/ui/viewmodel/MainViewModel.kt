@@ -140,10 +140,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun registerWithEmail(name: String, email: String, pass: String, phone: String, plate: String) {
+    fun registerWithEmail(name: String, email: String, pass: String, phone: String, plate: String, driverBadge: String = "") {
         viewModelScope.launch {
             _isAuthLoading.value = true
-            val result = repository.registerDriverWithEmail(name, email, pass, phone, plate)
+            val result = repository.registerDriverWithEmail(name, email, pass, phone, plate, driverBadge)
             _isAuthLoading.value = false
             result.onSuccess {
                 _userMessage.emit("Compte chauffeur enregistré avec succès !")
@@ -166,10 +166,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun loginWithGoogle(idToken: String, displayName: String?, email: String?, phone: String = "", plate: String = "") {
+    fun sendPasswordResetEmail(email: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             _isAuthLoading.value = true
-            val result = repository.loginOrRegisterWithGoogle(idToken, displayName, email, phone, plate)
+            val result = repository.sendPasswordResetEmail(email)
+            _isAuthLoading.value = false
+            result.onSuccess {
+                onResult(true, "Un email de réinitialisation vous a été envoyé.")
+                _userMessage.emit("Email de réinitialisation envoyé à $email")
+            }.onFailure { ex ->
+                val msg = ex.message ?: "Impossible d'envoyer l'email de réinitialisation."
+                onResult(false, msg)
+                _userMessage.emit(msg)
+            }
+        }
+    }
+
+    fun loginWithGoogle(idToken: String, displayName: String?, email: String?, phone: String = "", plate: String = "", driverBadge: String = "") {
+        viewModelScope.launch {
+            _isAuthLoading.value = true
+            val result = repository.loginOrRegisterWithGoogle(idToken, displayName, email, phone, plate, driverBadge)
             _isAuthLoading.value = false
             result.onSuccess {
                 _userMessage.emit("Connexion Google réussie.")
@@ -200,6 +216,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    fun updateDriverPlates(plate: String, badge: String) {
+        viewModelScope.launch {
+            val result = repository.updateDriverPlates(plate, badge)
+            result.onSuccess {
+                _userMessage.emit("Plaques mises à jour avec succès !")
+            }.onFailure { ex ->
+                _userMessage.emit("Erreur lors de la mise à jour des plaques : ${ex.message}")
+            }
+        }
+    }
+
+    fun generateNewVehiclePlate(): String = com.example.data.model.PlateGenerator.generateVehiclePlate()
+    fun generateNewDriverBadge(): String = com.example.data.model.PlateGenerator.generateDriverBadge()
 
     fun switchDriverStatus(status: DriverStatus) {
         viewModelScope.launch {

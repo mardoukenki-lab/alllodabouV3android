@@ -6,6 +6,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Notes
@@ -49,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.DriverProfile
 import com.example.data.model.Ride
 import com.example.ui.components.ServiceBadge
 import com.example.ui.components.launchAddressSearch
@@ -71,15 +75,31 @@ fun AvailableRidesScreen(
     isOfflineCache: Boolean,
     acceptingRideId: String?,
     onAcceptRide: (Ride) -> Unit,
+    driverProfile: DriverProfile? = null,
+    onOpenPlateGenerator: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val isMissingPlates = driverProfile != null && (driverProfile.plate.isBlank() || driverProfile.driverBadgeNumber.isBlank())
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(BgCanvas)
     ) {
         if (rides.isEmpty()) {
-            EmptyAvailableRidesState()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (isMissingPlates) {
+                    MissingPlateBanner(onOpenGenerator = onOpenPlateGenerator)
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+                EmptyAvailableRidesState()
+            }
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -87,8 +107,15 @@ fun AvailableRidesScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                if (isMissingPlates) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        MissingPlateBanner(onOpenGenerator = onOpenPlateGenerator)
+                    }
+                }
+
                 item {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "${rides.size} course${if (rides.size > 1) "s" else ""} disponible${if (rides.size > 1) "s" else ""}",
                         style = MaterialTheme.typography.titleMedium.copy(
@@ -111,6 +138,83 @@ fun AvailableRidesScreen(
                 item {
                     Spacer(modifier = Modifier.height(80.dp))
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun MissingPlateBanner(
+    onOpenGenerator: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFF59E0B)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFFFEF3C7),
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.DirectionsCar,
+                            contentDescription = null,
+                            tint = Color(0xFFD97706),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Immatriculation obligatoire manquante",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = InkDark
+                        )
+                    )
+                    Text(
+                        text = "Générez votre plaque officielle en 1 clic.",
+                        style = MaterialTheme.typography.bodySmall.copy(color = InkMuted)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "La plaque d'immatriculation du véhicule est obligatoire pour prendre en charge des courses à Dabou. Générez votre plaque conforme immédiatement.",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = InkDark.copy(alpha = 0.82f),
+                    lineHeight = 17.sp
+                )
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onOpenGenerator,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+            ) {
+                Text(
+                    text = "🎲 Générer ma plaque obligatoire",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                )
             }
         }
     }

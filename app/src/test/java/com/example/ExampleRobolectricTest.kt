@@ -4,11 +4,13 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.model.DriverProfile
 import com.example.data.model.DriverStatus
+import com.example.data.model.PlateGenerator
 import com.example.data.model.Ride
 import com.example.data.model.RideStatus
 import com.example.data.model.ServiceType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -32,6 +34,7 @@ class ExampleRobolectricTest {
             displayName = "Amadou Koné",
             phone = "+225 07 48 92 11 05",
             plate = "7421-HJ-01",
+            driverBadgeNumber = "DABOU-1001",
             status = DriverStatus.APPROVED,
             available = true,
             ratingAverage = 4.9,
@@ -40,6 +43,38 @@ class ExampleRobolectricTest {
         assertEquals("Amadou Koné", profile.displayName)
         assertEquals(DriverStatus.APPROVED, profile.status)
         assertEquals(true, profile.available)
+        assertEquals("DABOU-1001", profile.driverBadgeNumber)
+    }
+
+    @Test
+    fun `test plate generator format`() {
+        val vehiclePlate = PlateGenerator.generateVehiclePlate()
+        assertTrue(vehiclePlate.matches(Regex("\\d{4}-[A-Z]{2}-01")))
+
+        val driverBadge = PlateGenerator.generateDriverBadge()
+        assertTrue(driverBadge.startsWith("DABOU-"))
+
+        val ciPlate = PlateGenerator.generateDriverPlateCI()
+        assertTrue(ciPlate.startsWith("CI-DAB-"))
+    }
+
+    @Test
+    fun `test optional plate driver profile`() {
+        // Driver registering without plate initially
+        val profileWithoutPlate = DriverProfile(
+            uid = "driver_2",
+            displayName = "Kouassi Jean",
+            phone = "+225 05 12 34 56 78",
+            plate = "",
+            driverBadgeNumber = "",
+            status = DriverStatus.APPROVED,
+            available = true,
+            ratingAverage = 5.0,
+            ratingCount = 0
+        )
+        assertTrue(profileWithoutPlate.plate.isEmpty())
+        assertTrue(profileWithoutPlate.driverBadgeNumber.isEmpty())
+        assertEquals(DriverStatus.APPROVED, profileWithoutPlate.status)
     }
 
     @Test

@@ -26,6 +26,7 @@ data class DriverProfile(
     val email: String = "",
     val phone: String,
     val plate: String,
+    val driverBadgeNumber: String = "",
     val status: DriverStatus,
     val available: Boolean,
     val ratingAverage: Double,

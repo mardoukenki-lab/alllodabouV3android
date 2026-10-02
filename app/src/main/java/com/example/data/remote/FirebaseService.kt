@@ -91,6 +91,14 @@ class FirebaseService(private val context: Context) {
         }
     }
 
+    suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+        val authInstance = auth ?: return Result.failure(IllegalStateException("Firebase Auth non disponible"))
+        return runCatching {
+            authInstance.sendPasswordResetEmail(email.trim()).awaitTask()
+            Unit
+        }
+    }
+
     fun signOut() {
         runCatching { auth?.signOut() }
     }
@@ -104,6 +112,7 @@ class FirebaseService(private val context: Context) {
                 "email" to profile.email,
                 "phone" to profile.phone,
                 "vehicleNumber" to profile.plate,
+                "driverBadge" to profile.driverBadgeNumber,
                 "driverStatus" to profile.status.name.lowercase(),
                 "available" to profile.available,
                 "ratingAverage" to profile.ratingAverage,
@@ -112,6 +121,16 @@ class FirebaseService(private val context: Context) {
             )
             db.collection("users").document(profile.uid)
                 .set(data, SetOptions.merge())
+                .awaitTask()
+            Unit
+        }
+    }
+
+    suspend fun updateDriverPlate(uid: String, plate: String, badge: String): Result<Unit> {
+        val db = firestore ?: return Result.success(Unit)
+        return runCatching {
+            db.collection("users").document(uid)
+                .update(mapOf("vehicleNumber" to plate, "driverBadge" to badge, "updatedAt" to System.currentTimeMillis()))
                 .awaitTask()
             Unit
         }
@@ -136,6 +155,7 @@ class FirebaseService(private val context: Context) {
                 email = snapshot.getString("email") ?: "",
                 phone = snapshot.getString("phone") ?: "",
                 plate = snapshot.getString("vehicleNumber") ?: snapshot.getString("plate") ?: "",
+                driverBadgeNumber = snapshot.getString("driverBadge") ?: "",
                 status = status,
                 available = snapshot.getBoolean("available") ?: true,
                 ratingAverage = snapshot.getDouble("ratingAverage") ?: 5.0,

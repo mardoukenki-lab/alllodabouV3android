@@ -24,11 +24,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
@@ -72,9 +74,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.exceptions.GetCredentialException
 import com.example.R
 import com.example.ui.components.launchWhatsAppIntent
 import com.example.ui.theme.AccentAmber
@@ -89,17 +88,14 @@ import com.example.ui.theme.GreenPrimary
 import com.example.ui.theme.InkDark
 import com.example.ui.theme.InkMuted
 import com.example.ui.theme.RedContainer
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 @Composable
 fun AuthScreen(
     isLoading: Boolean,
     onLoginEmail: (email: String, pass: String) -> Unit,
-    onRegisterEmail: (name: String, email: String, pass: String, phone: String, plate: String) -> Unit,
-    onGoogleSignIn: (idToken: String, displayName: String?, email: String?, phone: String, plate: String) -> Unit,
+    onRegisterEmail: (name: String, email: String, pass: String, phone: String, plate: String, driverBadge: String) -> Unit,
+    onForgotPassword: (email: String, onResult: (Boolean, String) -> Unit) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -115,94 +111,94 @@ fun AuthScreen(
     var displayName by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("+225 ") }
     var plate by remember { mutableStateOf("") }
+    var driverBadge by remember { mutableStateOf("") }
 
     var passwordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Google Sign-In Profile Completion Dialog (if phone/plate are needed)
-    var showGoogleProfileDialog by remember { mutableStateOf(false) }
-    var pendingGoogleIdToken by remember { mutableStateOf("") }
-    var pendingGoogleName by remember { mutableStateOf("") }
-    var pendingGoogleEmail by remember { mutableStateOf("") }
-    var googlePhone by remember { mutableStateOf("+225 ") }
-    var googlePlate by remember { mutableStateOf("") }
-
-    // Helper to start Credential Manager Google Sign-In
-    fun initiateGoogleSignIn() {
-        errorMessage = null
-        coroutineScope.launch {
-            val credentialManager = CredentialManager.create(context)
-            val googleIdOption = GetGoogleIdOption.Builder()
-                .setFilterByAuthorizedAccounts(false)
-                .setServerClientId("608157790326-dummy.apps.googleusercontent.com")
-                .setAutoSelectEnabled(false)
-                .build()
-
-            val request = GetCredentialRequest.Builder()
-                .addCredentialOption(googleIdOption)
-                .build()
-
-            runCatching {
-                val result = credentialManager.getCredential(context = context, request = request)
-                val credential = result.credential
-                val googleIdToken = GoogleIdTokenCredential.createFrom(credential.data)
-                pendingGoogleIdToken = googleIdToken.idToken
-                pendingGoogleName = googleIdToken.displayName ?: "Chauffeur Google"
-                pendingGoogleEmail = googleIdToken.id
-                showGoogleProfileDialog = true
-            }.onFailure { ex ->
-                // Fallback for emulator / environment without preconfigured Google Web Client
-                pendingGoogleIdToken = "token_" + UUID.randomUUID().toString()
-                pendingGoogleName = "Chauffeur Google"
-                pendingGoogleEmail = "chauffeur.dabou@gmail.com"
-                showGoogleProfileDialog = true
-            }
-        }
-    }
+    // Forgot password dialog
+    var showForgotPasswordDialog by remember { mutableStateOf(false) }
+    var forgotEmailInput by remember { mutableStateOf("") }
+    var forgotPasswordMessage by remember { mutableStateOf<String?>(null) }
+    var forgotPasswordSuccess by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(BgCanvas)
             .verticalScroll(rememberScrollState())
-            .padding(20.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Hero Image
+        // Hero Image Card with branding badge
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(160.dp),
+                .height(165.dp),
             shape = RoundedCornerShape(24.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.driver_hero),
-                contentDescription = "Allô Dabou Chauffeur",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                Image(
+                    painter = painterResource(id = R.drawable.driver_hero),
+                    contentDescription = "Allô Dabou Chauffeur",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Official badge pill top-left
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = GreenDark.copy(alpha = 0.92f),
+                    modifier = Modifier
+                        .padding(14.dp)
+                        .align(Alignment.TopStart)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Security,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = "PORTAIL OFFICIEL CHAUFFEURS",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                                letterSpacing = 0.5.sp
+                            )
+                        )
+                    }
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // App Title
+        // App Title & Tagline
         Text(
             text = "Allô Dabou Chauffeur",
             style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.ExtraBold,
                 color = InkDark
             )
         )
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = "Espace professionnel pour chauffeurs et livreurs à Dabou",
+            text = "Connexion sécurisée pour chauffeurs et livreurs à Dabou",
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = InkMuted,
                 textAlign = TextAlign.Center
             ),
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
 
         Spacer(modifier = Modifier.height(18.dp))
@@ -276,6 +272,25 @@ fun AuthScreen(
             Column(
                 modifier = Modifier.padding(20.dp)
             ) {
+                // Form Header
+                Text(
+                    text = if (selectedTab == 0) "Espace Chauffeur" else "Inscription Chauffeur Officiel",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = InkDark
+                    )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (selectedTab == 0)
+                        "Connectez-vous avec votre e-mail et mot de passe pour accéder à vos courses."
+                    else
+                        "Renseignez vos coordonnées pour activer votre compte professionnel.",
+                    style = MaterialTheme.typography.bodySmall.copy(color = InkMuted)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 if (selectedTab == 1) {
                     // Registration: Full Name
                     Text(
@@ -374,6 +389,31 @@ fun AuthScreen(
                     )
                 )
 
+                // Forgot Password link for Login tab
+                if (selectedTab == 0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Text(
+                            text = "Mot de passe oublié ?",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = GreenPrimary,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable {
+                                    forgotEmailInput = email.trim()
+                                    forgotPasswordMessage = null
+                                    showForgotPasswordDialog = true
+                                }
+                                .padding(vertical = 4.dp, horizontal = 2.dp)
+                        )
+                    }
+                }
+
                 if (selectedTab == 1) {
                     Spacer(modifier = Modifier.height(14.dp))
 
@@ -440,26 +480,132 @@ fun AuthScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Vehicle Plate
-                    Text(
-                        text = "Immatriculation / Plaque du véhicule",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = InkDark
+                    // Notice: Vehicle Plate is mandatory
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFFEF3C7),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDE68A))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "⚠️ La plaque d'immatriculation du véhicule est obligatoire pour tous les chauffeurs Allô Dabou. Si vous n'en avez pas encore, cliquez sur '🎲 Générer plaque CI' pour en créer une instantanément.",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color(0xFF92400E),
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // 1. Plaque d'immatriculation Chauffeur (Optional)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Matricule chauffeur Allô Dabou (Optionnel)",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = InkDark
+                            )
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = GreenContainer,
+                            modifier = Modifier.clickable {
+                                driverBadge = com.example.data.model.PlateGenerator.generateDriverBadge()
+                            }
+                        ) {
+                            Text(
+                                text = "🎲 Générer matricule",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = GreenPrimary,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = driverBadge,
+                        onValueChange = { driverBadge = it.uppercase() },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Ex: DABOU-4821 (Facultatif)", color = InkMuted) },
+                        leadingIcon = {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = GreenPrimary)
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { driverBadge = com.example.data.model.PlateGenerator.generateDriverBadge() }) {
+                                Icon(Icons.Default.DirectionsCar, contentDescription = "Générer", tint = GreenPrimary)
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                            imeAction = ImeAction.Next
+                        ),
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GreenPrimary,
+                            unfocusedBorderColor = BorderInput
                         )
                     )
-                    Text(
-                        text = "Ex: 7421-HJ-01 (4 à 12 caractères)",
-                        style = MaterialTheme.typography.bodySmall.copy(color = InkMuted)
-                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // 2. Plaque du véhicule (Obligatoire)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Plaque d'immatriculation véhicule (Obligatoire) *",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = InkDark
+                            )
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = GreenContainer,
+                            modifier = Modifier.clickable {
+                                plate = com.example.data.model.PlateGenerator.generateVehiclePlate()
+                            }
+                        ) {
+                            Text(
+                                text = "🎲 Générer plaque CI",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = GreenPrimary,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = plate,
                         onValueChange = { plate = it.uppercase() },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("7421-HJ-01", color = InkMuted) },
+                        placeholder = { Text("Ex: 7421-HJ-01 (Obligatoire ou générer)", color = InkMuted) },
                         leadingIcon = {
                             Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = GreenPrimary)
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { plate = com.example.data.model.PlateGenerator.generateVehiclePlate() }) {
+                                Icon(Icons.Default.DirectionsCar, contentDescription = "Générer", tint = GreenPrimary)
+                            }
                         },
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Characters,
@@ -526,11 +672,16 @@ fun AuthScreen(
                                 return@Button
                             }
                             val cleanPlate = plate.trim().uppercase()
-                            if (cleanPlate.length !in 4..12) {
-                                errorMessage = "La plaque doit comporter entre 4 et 12 caractères."
+                            val cleanBadge = driverBadge.trim().uppercase()
+                            if (cleanPlate.isBlank()) {
+                                errorMessage = "La plaque d'immatriculation du véhicule est obligatoire. Cliquez sur '🎲 Générer plaque CI' si vous n'en avez pas."
                                 return@Button
                             }
-                            onRegisterEmail(displayName.trim(), email.trim(), password.trim(), phone.trim(), cleanPlate)
+                            if (cleanPlate.length !in 4..14) {
+                                errorMessage = "La plaque d'immatriculation doit comporter entre 4 et 14 caractères (ex: 7421-HJ-01)."
+                                return@Button
+                            }
+                            onRegisterEmail(displayName.trim(), email.trim(), password.trim(), phone.trim(), cleanPlate, cleanBadge)
                         }
                     },
                     enabled = !isLoading,
@@ -547,10 +698,10 @@ fun AuthScreen(
                             strokeWidth = 2.dp
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Traitement en cours...")
+                        Text("Connexion en cours...")
                     } else {
                         Text(
-                            text = if (selectedTab == 0) "Se connecter avec mot de passe" else "Créer mon compte chauffeur",
+                            text = if (selectedTab == 0) "Se connecter en toute sécurité" else "Créer mon compte chauffeur",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -558,63 +709,64 @@ fun AuthScreen(
                         )
                     }
                 }
+            }
+        }
 
-                Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-                // Divider "ou continuer avec"
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = BorderInput)
-                    Text(
-                        text = "  ou continuer avec  ",
-                        style = MaterialTheme.typography.labelSmall.copy(color = InkMuted)
+        // Security Assurance Pill Row
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderInput)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = GreenPrimary,
+                        modifier = Modifier.size(16.dp)
                     )
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = BorderInput)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Firebase Auth SSL",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = InkDark,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Google Sign-In Button
-                OutlinedButton(
-                    onClick = { initiateGoogleSignIn() },
-                    enabled = !isLoading,
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderInput),
-                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        // Google Color G Icon representation
-                        Surface(
-                            shape = CircleShape,
-                            color = Color.White,
-                            modifier = Modifier.size(22.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "G",
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 17.sp,
-                                    color = Color(0xFF4285F4)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = if (selectedTab == 0) "Continuer avec Google" else "S'inscrire avec Google",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                color = InkDark
-                            )
+                        .width(1.dp)
+                        .height(20.dp)
+                        .background(BorderInput)
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = GreenPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Sécurité certifiée",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = InkDark,
+                            fontWeight = FontWeight.SemiBold
                         )
-                    }
+                    )
                 }
             }
         }
@@ -622,80 +774,96 @@ fun AuthScreen(
         Spacer(modifier = Modifier.height(20.dp))
     }
 
-    // Google Profile Completion Dialog
-    if (showGoogleProfileDialog) {
+    // Forgot Password Dialog
+    if (showForgotPasswordDialog) {
+        var isSubmittingReset by remember { mutableStateOf(false) }
+
         AlertDialog(
-            onDismissRequest = { showGoogleProfileDialog = false },
+            onDismissRequest = {
+                if (!isSubmittingReset) showForgotPasswordDialog = false
+            },
             title = {
-                Text(
-                    text = "Compléter votre profil chauffeur",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = GreenPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Mot de passe oublié",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
             },
             text = {
                 Column {
                     Text(
-                        text = "Compte Google identifié : $pendingGoogleEmail",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = GreenDark,
-                            fontWeight = FontWeight.Bold
+                        text = "Saisissez votre adresse email chauffeur. Un lien sécurisé Firebase Auth vous sera envoyé pour réinitialiser votre mot de passe.",
+                        style = MaterialTheme.typography.bodySmall.copy(color = InkMuted)
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    OutlinedTextField(
+                        value = forgotEmailInput,
+                        onValueChange = { forgotEmailInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("chauffeur@exemple.com") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Email, contentDescription = null, tint = GreenPrimary)
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    if (forgotPasswordMessage != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = forgotPasswordMessage ?: "",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = if (forgotPasswordSuccess) GreenPrimary else AccentRed,
+                                fontWeight = FontWeight.Medium
+                            )
                         )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = "Numéro de téléphone (+225)",
-                        style = MaterialTheme.typography.labelSmall.copy(color = InkDark, fontWeight = FontWeight.Bold)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    OutlinedTextField(
-                        value = googlePhone,
-                        onValueChange = { googlePhone = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("+225 07 00 00 00 00") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = "Immatriculation / Plaque véhicule",
-                        style = MaterialTheme.typography.labelSmall.copy(color = InkDark, fontWeight = FontWeight.Bold)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    OutlinedTextField(
-                        value = googlePlate,
-                        onValueChange = { googlePlate = it.uppercase() },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Ex: 7421-HJ-01") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        val cleanPhone = googlePhone.trim()
-                        val cleanPlate = googlePlate.trim().uppercase()
-                        showGoogleProfileDialog = false
-                        onGoogleSignIn(
-                            pendingGoogleIdToken,
-                            pendingGoogleName,
-                            pendingGoogleEmail,
-                            cleanPhone,
-                            cleanPlate
-                        )
+                        val clean = forgotEmailInput.trim()
+                        if (clean.isBlank() || !clean.contains("@")) {
+                            forgotPasswordMessage = "Veuillez saisir une adresse email valide."
+                            forgotPasswordSuccess = false
+                            return@Button
+                        }
+                        isSubmittingReset = true
+                        onForgotPassword(clean) { success, msg ->
+                            isSubmittingReset = false
+                            forgotPasswordSuccess = success
+                            forgotPasswordMessage = msg
+                            if (success) {
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(2000)
+                                    showForgotPasswordDialog = false
+                                }
+                            }
+                        }
                     },
+                    enabled = !isSubmittingReset,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
                 ) {
-                    Text("Valider et continuer")
+                    if (isSubmittingReset) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Envoyer le lien")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showGoogleProfileDialog = false }) {
+                TextButton(onClick = { showForgotPasswordDialog = false }, enabled = !isSubmittingReset) {
                     Text("Annuler")
                 }
             }

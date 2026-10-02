@@ -9,6 +9,7 @@ import com.example.data.model.ClientContact
 import com.example.data.model.DriverGate
 import com.example.data.model.DriverProfile
 import com.example.data.model.DriverStatus
+import com.example.data.model.PlateGenerator
 import com.example.data.model.Ride
 import com.example.data.model.RideStatus
 import com.example.data.model.ServiceType
@@ -89,11 +90,13 @@ class DriverRepository(
         email: String,
         password: String,
         phone: String,
-        plate: String
+        plate: String = "",
+        driverBadge: String = ""
     ): Result<Unit> = withContext(Dispatchers.IO) {
         val cleanEmail = email.trim()
         val cleanPassword = password.trim()
         val cleanPlate = plate.trim().uppercase()
+        val cleanBadge = driverBadge.trim().uppercase()
         val cleanPhone = phone.trim()
         val cleanName = displayName.trim()
 
@@ -109,21 +112,23 @@ class DriverRepository(
         if (cleanPhone.length < 8) {
             return@withContext Result.failure(IllegalArgumentException("Veuillez saisir un numéro de téléphone valide."))
         }
-        if (cleanPlate.length !in 4..12) {
-            return@withContext Result.failure(IllegalArgumentException("La plaque doit comporter entre 4 et 12 caractères."))
+        val finalPlate = if (cleanPlate.isNotBlank()) cleanPlate else PlateGenerator.generateVehiclePlate()
+        if (finalPlate.length !in 4..14) {
+            return@withContext Result.failure(IllegalArgumentException("La plaque d'immatriculation doit comporter entre 4 et 14 caractères."))
         }
 
         // 1. Firebase Auth Sign Up
         val fbUserResult = firebaseService.signUpWithEmail(cleanEmail, cleanPassword)
         val uid = fbUserResult.getOrNull()?.uid ?: ("driver_" + UUID.randomUUID().toString().take(8))
 
-        // 2. Profile Creation (Status is APPROVED so newly registered driver can immediately operate)
+        // 2. Profile Creation (Plaque véhicule obligatoire)
         val profile = DriverProfile(
             uid = uid,
             displayName = cleanName,
             email = cleanEmail,
             phone = cleanPhone,
-            plate = cleanPlate,
+            plate = finalPlate,
+            driverBadgeNumber = cleanBadge,
             status = DriverStatus.APPROVED,
             available = true,
             ratingAverage = 5.0,
@@ -195,12 +200,21 @@ class DriverRepository(
         Result.success(Unit)
     }
 
+    suspend fun sendPasswordResetEmail(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val cleanEmail = email.trim()
+        if (!cleanEmail.contains("@") || !cleanEmail.contains(".")) {
+            return@withContext Result.failure(IllegalArgumentException("Veuillez saisir une adresse email valide."))
+        }
+        firebaseService.sendPasswordResetEmail(cleanEmail)
+    }
+
     suspend fun loginOrRegisterWithGoogle(
         idToken: String,
         googleName: String?,
         googleEmail: String?,
         phone: String = "",
-        plate: String = ""
+        plate: String = "",
+        driverBadge: String = ""
     ): Result<Unit> = withContext(Dispatchers.IO) {
         val fbResult = firebaseService.signInWithGoogle(idToken)
         val user = fbResult.getOrNull()
@@ -220,13 +234,17 @@ class DriverRepository(
             return@withContext Result.success(Unit)
         }
 
-        // Create new driver profile
+        // Create new driver profile (Plaque véhicule obligatoire)
+        val cleanPlate = plate.trim().uppercase()
+        val finalPlate = if (cleanPlate.isNotBlank()) cleanPlate else PlateGenerator.generateVehiclePlate()
+        val cleanBadge = driverBadge.trim().uppercase()
         val newProfile = DriverProfile(
             uid = uid,
             displayName = googleName ?: user?.displayName ?: "Chauffeur Allô Dabou",
             email = googleEmail ?: user?.email ?: "",
             phone = phone.ifBlank { user?.phoneNumber ?: "+225 07 00 00 00" },
-            plate = plate.ifBlank { "7421-HJ-01" },
+            plate = finalPlate,
+            driverBadgeNumber = cleanBadge,
             status = DriverStatus.APPROVED,
             available = true,
             ratingAverage = 5.0,
@@ -236,6 +254,20 @@ class DriverRepository(
         driverProfileDao.insertProfile(DriverProfileEntity.fromDomain(newProfile))
         firebaseService.saveDriverProfile(newProfile)
 
+        Result.success(Unit)
+    }
+
+    suspend fun updateDriverPlates(plate: String, badge: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val profile = driverProfileDao.getProfile() ?: return@withContext Result.failure(IllegalStateException("Profil introuvable"))
+        val finalPlate = plate.trim().uppercase()
+        val finalBadge = badge.trim().uppercase()
+        if (finalPlate.isNotBlank()) {
+            driverProfileDao.updatePlate(profile.uid, finalPlate)
+        }
+        if (finalBadge.isNotBlank()) {
+            driverProfileDao.updateDriverBadge(profile.uid, finalBadge)
+        }
+        firebaseService.updateDriverPlate(profile.uid, finalPlate, finalBadge)
         Result.success(Unit)
     }
 

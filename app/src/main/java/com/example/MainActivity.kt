@@ -117,11 +117,11 @@ class MainActivity : ComponentActivity() {
                             AuthScreen(
                                 isLoading = isAuthLoading,
                                 onLoginEmail = { email, pass -> viewModel.loginWithEmail(email, pass) },
-                                onRegisterEmail = { name, email, pass, phone, plate ->
-                                    viewModel.registerWithEmail(name, email, pass, phone, plate)
+                                onRegisterEmail = { name, email, pass, phone, plate, driverBadge ->
+                                    viewModel.registerWithEmail(name, email, pass, phone, plate, driverBadge)
                                 },
-                                onGoogleSignIn = { idToken, name, email, phone, plate ->
-                                    viewModel.loginWithGoogle(idToken, name, email, phone, plate)
+                                onForgotPassword = { email, onResult ->
+                                    viewModel.sendPasswordResetEmail(email, onResult)
                                 }
                             )
                         }
@@ -167,6 +167,7 @@ class MainActivity : ComponentActivity() {
                                 acceptingRideId = isAcceptingRideId,
                                 userMessages = viewModel.userMessage,
                                 onToggleAvailability = { viewModel.toggleAvailability() },
+                                onUpdatePlates = { plate, badge -> viewModel.updateDriverPlates(plate, badge) },
                                 onAcceptRide = { ride -> viewModel.acceptRide(ride) },
                                 onCompleteRide = { rideId -> viewModel.completeRide(rideId) },
                                 onReleaseRide = { rideId, reason -> viewModel.releaseRide(rideId, reason) },

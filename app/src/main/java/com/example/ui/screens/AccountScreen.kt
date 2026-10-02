@@ -40,6 +40,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -83,6 +84,7 @@ fun AccountScreen(
     profile: DriverProfile?,
     isAlertsHealthy: Boolean,
     onToggleAvailability: () -> Unit,
+    onUpdatePlates: (plate: String, badge: String) -> Unit,
     onTestSoundAndVibration: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onOpenBatterySettings: () -> Unit,
@@ -93,6 +95,7 @@ fun AccountScreen(
     val context = LocalContext.current
     var showBatteryGuideDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showPlateGeneratorDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -154,7 +157,7 @@ fun AccountScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Stats row: Vehicle plate + Ratings
+                // Stats row: Vehicle plate + Driver Badge + Ratings
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -172,15 +175,36 @@ fun AccountScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = profile?.plate ?: "---",
-                                style = MaterialTheme.typography.titleMedium.copy(
+                                text = profile?.plate?.ifBlank { "Non renseignée" } ?: "Non renseignée",
+                                style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = InkDark
+                                    color = if (profile?.plate.isNullOrBlank()) InkMuted else InkDark
                                 )
                             )
                         }
                         Text(
-                            text = "Plaque immatriculation",
+                            text = "Plaque véhicule",
+                            style = MaterialTheme.typography.labelSmall.copy(color = InkMuted)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(30.dp)
+                            .background(BorderInput)
+                    )
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = profile?.driverBadgeNumber?.ifBlank { "Non assignée" } ?: "Non assignée",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = if (profile?.driverBadgeNumber.isNullOrBlank()) InkMuted else GreenDark
+                            )
+                        )
+                        Text(
+                            text = "Plaque chauffeur",
                             style = MaterialTheme.typography.labelSmall.copy(color = InkMuted)
                         )
                     }
@@ -202,8 +226,8 @@ fun AccountScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "${profile?.ratingAverage ?: 4.9} (${profile?.ratingCount ?: 0})",
-                                style = MaterialTheme.typography.titleMedium.copy(
+                                text = "${profile?.ratingAverage ?: 5.0}",
+                                style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = InkDark
                                 )
@@ -261,6 +285,90 @@ fun AccountScreen(
                         checkedTrackColor = GreenPrimary
                     )
                 )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Plate Generator Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderInput)
+        ) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(GreenContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DirectionsCar,
+                                contentDescription = null,
+                                tint = GreenPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Générateur d'immatriculation",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = InkDark
+                            )
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = GreenContainer
+                    ) {
+                        Text(
+                            text = "Disponible",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = GreenDark,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "La plaque d'immatriculation du véhicule est obligatoire pour exercer. Générez en 1 clic une plaque au format officiel de Côte d'Ivoire (ex: 7421-HJ-01) ou votre matricule officiel chauffeur Allô Dabou.",
+                    style = MaterialTheme.typography.bodySmall.copy(color = InkMuted)
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = { showPlateGeneratorDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+                    ) {
+                        Text(
+                            text = "🎲 Ouvrir le générateur de plaques",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+                    }
+                }
             }
         }
 
@@ -553,6 +661,219 @@ fun AccountScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteAccountDialog = false }) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
+
+    // Plate Generator Dialog
+    if (showPlateGeneratorDialog) {
+        var currentPlateInput by remember { mutableStateOf(profile?.plate ?: "") }
+        var currentBadgeInput by remember { mutableStateOf(profile?.driverBadgeNumber ?: "") }
+
+        AlertDialog(
+            onDismissRequest = { showPlateGeneratorDialog = false },
+            title = {
+                Text(
+                    text = "Générateur de plaques & matricules",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        text = "Générez ou modifiez vos plaques d'immatriculation pour votre véhicule et votre matricule officiel chauffeur :",
+                        style = MaterialTheme.typography.bodySmall.copy(color = InkMuted)
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // 1. Driver Badge Generator Section
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Plaque chauffeur / Matricule",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = InkDark)
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = GreenContainer,
+                            modifier = Modifier.clickable {
+                                currentBadgeInput = com.example.data.model.PlateGenerator.generateDriverBadge()
+                            }
+                        ) {
+                            Text(
+                                text = "🎲 Générer matricule",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = GreenPrimary,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = currentBadgeInput,
+                        onValueChange = { currentBadgeInput = it.uppercase() },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Ex: DABOU-7412 (Facultatif)") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    // Visual Driver Badge Plate Preview
+                    if (currentBadgeInput.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            color = GreenDark,
+                            shadowElevation = 2.dp
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "★ ALLÔ DABOU • CHAUFFEUR OFFICIEL ★",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color.White.copy(alpha = 0.85f),
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                                Text(
+                                    text = currentBadgeInput,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = Color.White,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 2.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // 2. Vehicle Plate Generator Section
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Plaque véhicule CI (Obligatoire) *",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = InkDark)
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = GreenContainer,
+                            modifier = Modifier.clickable {
+                                currentPlateInput = com.example.data.model.PlateGenerator.generateVehiclePlate()
+                            }
+                        ) {
+                            Text(
+                                text = "🎲 Générer plaque CI",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = GreenPrimary,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = currentPlateInput,
+                        onValueChange = { currentPlateInput = it.uppercase() },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Ex: 7421-HJ-01 (Obligatoire)") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    // Visual Vehicle Plate Preview
+                    if (currentPlateInput.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF9FAFB),
+                            border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF1E293B)),
+                            shadowElevation = 2.dp
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp, horizontal = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                // Blue CI strip
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = Color(0xFF1E40AF),
+                                    modifier = Modifier.padding(2.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(
+                                            text = "CI",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = currentPlateInput,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = Color(0xFF0F172A),
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = 2.sp
+                                    )
+                                )
+
+                                Text(
+                                    text = "01",
+                                    color = Color(0xFF64748B),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(end = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val finalPlate = if (currentPlateInput.trim().isNotBlank()) {
+                            currentPlateInput.trim().uppercase()
+                        } else {
+                            com.example.data.model.PlateGenerator.generateVehiclePlate()
+                        }
+                        showPlateGeneratorDialog = false
+                        onUpdatePlates(finalPlate, currentBadgeInput.trim().uppercase())
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+                ) {
+                    Text("Enregistrer les plaques")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPlateGeneratorDialog = false }) {
                     Text("Annuler")
                 }
             }

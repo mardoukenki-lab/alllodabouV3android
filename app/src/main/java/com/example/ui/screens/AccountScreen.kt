@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Info
@@ -37,6 +38,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -236,6 +238,45 @@ fun AccountScreen(
                         Text(
                             text = "Note moyenne",
                             style = MaterialTheme.typography.labelSmall.copy(color = InkMuted)
+                        )
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(top = 14.dp, bottom = 10.dp), color = BorderInput)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CreditCard,
+                            contentDescription = null,
+                            tint = GreenPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Permis de conduire :",
+                            style = MaterialTheme.typography.bodySmall.copy(color = InkMuted)
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (profile?.hasLicense == false || profile?.licenseNumber == "SANS PERMIS") AmberContainer else GreenContainer
+                    ) {
+                        Text(
+                            text = if (profile?.hasLicense == false || profile?.licenseNumber == "SANS PERMIS") {
+                                "Sans permis (Livraisons)"
+                            } else {
+                                profile?.licenseNumber?.ifBlank { "Permis renseigné" } ?: "Permis renseigné"
+                            },
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = if (profile?.hasLicense == false || profile?.licenseNumber == "SANS PERMIS") Color(0xFFB45309) else GreenDark,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                 }

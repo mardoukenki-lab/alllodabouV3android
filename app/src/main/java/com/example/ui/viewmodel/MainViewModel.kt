@@ -51,6 +51,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isAcceptingRideId = MutableStateFlow<String?>(null)
     val isAcceptingRideId: StateFlow<String?> = _isAcceptingRideId.asStateFlow()
 
+    private val _incomingRideOffer = MutableStateFlow<Ride?>(null)
+    val incomingRideOffer: StateFlow<Ride?> = _incomingRideOffer.asStateFlow()
+
     private val _isAuthLoading = MutableStateFlow(false)
     val isAuthLoading: StateFlow<Boolean> = _isAuthLoading.asStateFlow()
 
@@ -140,10 +143,58 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun registerWithEmail(name: String, email: String, pass: String, phone: String, plate: String, driverBadge: String = "") {
+    fun showRideReception(ride: Ride) {
+        _incomingRideOffer.value = ride
+        alertsManager.triggerAlertSoundAndVibration()
+    }
+
+    fun dismissRideReception() {
+        _incomingRideOffer.value = null
+    }
+
+    fun acceptRideOffer(ride: Ride) {
+        _incomingRideOffer.value = null
+        acceptRide(ride)
+    }
+
+    fun declineRideOffer(ride: Ride) {
+        viewModelScope.launch {
+            _incomingRideOffer.value = null
+            repository.declineRide(ride.id)
+            _userMessage.emit("Demande de course refusée.")
+        }
+    }
+
+    fun simulateNewIncomingRide() {
+        viewModelScope.launch {
+            val ride = repository.simulateNewRideOffer()
+            _incomingRideOffer.value = ride
+            _userMessage.emit("Nouvelle demande de course reçue à Dabou !")
+        }
+    }
+
+    fun registerWithEmail(
+        name: String,
+        email: String,
+        pass: String,
+        phone: String,
+        plate: String,
+        driverBadge: String = "",
+        hasLicense: Boolean = true,
+        licenseNumber: String = ""
+    ) {
         viewModelScope.launch {
             _isAuthLoading.value = true
-            val result = repository.registerDriverWithEmail(name, email, pass, phone, plate, driverBadge)
+            val result = repository.registerDriverWithEmail(
+                displayName = name,
+                email = email,
+                password = pass,
+                phone = phone,
+                plate = plate,
+                driverBadge = driverBadge,
+                hasLicense = hasLicense,
+                licenseNumber = licenseNumber
+            )
             _isAuthLoading.value = false
             result.onSuccess {
                 _userMessage.emit("Compte chauffeur enregistré avec succès !")

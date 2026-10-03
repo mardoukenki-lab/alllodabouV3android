@@ -93,6 +93,17 @@ class MainActivity : ComponentActivity() {
                 val isAlertsHealthy by viewModel.isAlertsHealthy.collectAsStateWithLifecycle()
                 val isAcceptingRideId by viewModel.isAcceptingRideId.collectAsStateWithLifecycle()
                 val isAuthLoading by viewModel.isAuthLoading.collectAsStateWithLifecycle()
+                val incomingRideOffer by viewModel.incomingRideOffer.collectAsStateWithLifecycle()
+
+                LaunchedEffect(intent, availableRides) {
+                    val openRideId = intent?.getStringExtra("OPEN_RIDE_ID")
+                    if (!openRideId.isNullOrBlank()) {
+                        val target = availableRides.find { it.id == openRideId }
+                        if (target != null) {
+                            viewModel.showRideReception(target)
+                        }
+                    }
+                }
 
                 Box(
                     modifier = Modifier
@@ -117,8 +128,8 @@ class MainActivity : ComponentActivity() {
                             AuthScreen(
                                 isLoading = isAuthLoading,
                                 onLoginEmail = { email, pass -> viewModel.loginWithEmail(email, pass) },
-                                onRegisterEmail = { name, email, pass, phone, plate, driverBadge ->
-                                    viewModel.registerWithEmail(name, email, pass, phone, plate, driverBadge)
+                                onRegisterEmail = { name, email, pass, phone, plate, driverBadge, hasLicense, licenseNumber ->
+                                    viewModel.registerWithEmail(name, email, pass, phone, plate, driverBadge, hasLicense, licenseNumber)
                                 },
                                 onForgotPassword = { email, onResult ->
                                     viewModel.sendPasswordResetEmail(email, onResult)
@@ -181,7 +192,12 @@ class MainActivity : ComponentActivity() {
                                     startActivity(viewModel.alertsManager.openBatteryOptimizationSettingsIntent())
                                 },
                                 onDeleteAccount = { viewModel.deleteAccount() },
-                                onSignOut = { viewModel.signOut() }
+                                onSignOut = { viewModel.signOut() },
+                                incomingRideOffer = incomingRideOffer,
+                                onDeclineIncomingRide = { ride -> viewModel.declineRideOffer(ride) },
+                                onAcceptIncomingRide = { ride -> viewModel.acceptRideOffer(ride) },
+                                onOpenRideReception = { ride -> viewModel.showRideReception(ride) },
+                                onSimulateIncomingRide = { viewModel.simulateNewIncomingRide() }
                             )
                         }
                     }

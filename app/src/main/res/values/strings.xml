@@ -4,4 +4,10 @@
     <string name="tab_available_rides">Courses</string>
     <string name="tab_my_rides">Mes courses</string>
     <string name="tab_account">Compte</string>
+    <string name="ride_reception_title">Réception de course</string>
+    <string name="btn_accept_ride">Accepter</string>
+    <string name="btn_refuse_ride">Refuser</string>
+    <string name="estimated_price_label">Prix estimé</string>
+    <string name="pickup_label">Départ (Prise en charge)</string>
+    <string name="destination_label">Destination (Dépose client)</string>
 </resources>

@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -78,6 +80,11 @@ fun MainDriverScreen(
     onOpenBatterySettings: () -> Unit,
     onDeleteAccount: () -> Unit,
     onSignOut: () -> Unit,
+    incomingRideOffer: Ride? = null,
+    onDeclineIncomingRide: (Ride) -> Unit = {},
+    onAcceptIncomingRide: (Ride) -> Unit = onAcceptRide,
+    onOpenRideReception: (Ride) -> Unit = {},
+    onSimulateIncomingRide: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -89,183 +96,206 @@ fun MainDriverScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopHeaderBar(
-                profile = profile,
-                isOfflineCache = isOfflineCache,
-                isAlertsHealthy = isAlertsHealthy,
-                onToggleAvailability = onToggleAvailability,
-                onOpenAlertsSettings = onOpenNotificationSettings
-            )
-        },
-        bottomBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-            ) {
-                // Sticky Active Ride Bar on tabs other than "Mes courses" (Tab 1)
-                AnimatedVisibility(
-                    visible = activeRide != null && selectedTab != 1,
-                    enter = slideInVertically(initialOffsetY = { it }),
-                    exit = slideOutVertically(targetOffsetY = { it })
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                TopHeaderBar(
+                    profile = profile,
+                    isOfflineCache = isOfflineCache,
+                    isAlertsHealthy = isAlertsHealthy,
+                    onToggleAvailability = onToggleAvailability,
+                    onOpenAlertsSettings = onOpenNotificationSettings
+                )
+            },
+            bottomBar = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White)
                 ) {
-                    activeRide?.let { ride ->
-                        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-                            ActiveRideStickyBar(
-                                ride = ride,
-                                onOpenRide = { selectedTab = 1 }
-                            )
+                    // Sticky Active Ride Bar on tabs other than "Mes courses" (Tab 1)
+                    AnimatedVisibility(
+                        visible = activeRide != null && selectedTab != 1,
+                        enter = slideInVertically(initialOffsetY = { it }),
+                        exit = slideOutVertically(targetOffsetY = { it })
+                    ) {
+                        activeRide?.let { ride ->
+                            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                                ActiveRideStickyBar(
+                                    ride = ride,
+                                    onOpenRide = { selectedTab = 1 }
+                                )
+                            }
                         }
                     }
+
+                    // Standard Navigation Bar respecting WindowInsets.navigationBars
+                    NavigationBar(
+                        containerColor = Color.White,
+                        tonalElevation = 8.dp,
+                        windowInsets = WindowInsets.navigationBars,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Tab 0: Courses
+                        NavigationBarItem(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            icon = {
+                                BadgedBox(
+                                    badge = {
+                                        if (availableRides.isNotEmpty()) {
+                                            Badge(
+                                                containerColor = GreenPrimary,
+                                                contentColor = Color.White
+                                            ) {
+                                                Text("${availableRides.size}")
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (selectedTab == 0) Icons.Filled.ListAlt else Icons.Outlined.ListAlt,
+                                        contentDescription = "Courses disponibles"
+                                    )
+                                }
+                            },
+                            label = {
+                                Text(
+                                    text = "Courses",
+                                    fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = GreenPrimary,
+                                selectedTextColor = GreenPrimary,
+                                indicatorColor = GreenContainer,
+                                unselectedIconColor = InkMuted,
+                                unselectedTextColor = InkMuted
+                            )
+                        )
+
+                        // Tab 1: Mes courses
+                        NavigationBarItem(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            icon = {
+                                BadgedBox(
+                                    badge = {
+                                        if (activeRide != null) {
+                                            Badge(
+                                                containerColor = GreenPrimary,
+                                                contentColor = Color.White
+                                            ) {
+                                                Text("1")
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (selectedTab == 1) Icons.Filled.DirectionsCar else Icons.Outlined.DirectionsCar,
+                                        contentDescription = "Mes courses"
+                                    )
+                                }
+                            },
+                            label = {
+                                Text(
+                                    text = "Mes courses",
+                                    fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = GreenPrimary,
+                                selectedTextColor = GreenPrimary,
+                                indicatorColor = GreenContainer,
+                                unselectedIconColor = InkMuted,
+                                unselectedTextColor = InkMuted
+                            )
+                        )
+
+                        // Tab 2: Compte
+                        NavigationBarItem(
+                            selected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            icon = {
+                                Icon(
+                                    imageVector = if (selectedTab == 2) Icons.Filled.Person else Icons.Outlined.Person,
+                                    contentDescription = "Compte chauffeur"
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = "Compte",
+                                    fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = GreenPrimary,
+                                selectedTextColor = GreenPrimary,
+                                indicatorColor = GreenContainer,
+                                unselectedIconColor = InkMuted,
+                                unselectedTextColor = InkMuted
+                            )
+                        )
+                    }
                 }
-
-                // Standard Navigation Bar respecting WindowInsets.navigationBars
-                NavigationBar(
-                    containerColor = Color.White,
-                    tonalElevation = 8.dp,
-                    windowInsets = WindowInsets.navigationBars,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Tab 0: Courses
-                    NavigationBarItem(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        icon = {
-                            BadgedBox(
-                                badge = {
-                                    if (availableRides.isNotEmpty()) {
-                                        Badge(
-                                            containerColor = GreenPrimary,
-                                            contentColor = Color.White
-                                        ) {
-                                            Text("${availableRides.size}")
-                                        }
-                                    }
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = if (selectedTab == 0) Icons.Filled.ListAlt else Icons.Outlined.ListAlt,
-                                    contentDescription = "Courses disponibles"
-                                )
-                            }
-                        },
-                        label = {
-                            Text(
-                                text = "Courses",
-                                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = GreenPrimary,
-                            selectedTextColor = GreenPrimary,
-                            indicatorColor = GreenContainer,
-                            unselectedIconColor = InkMuted,
-                            unselectedTextColor = InkMuted
-                        )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                when (selectedTab) {
+                    0 -> AvailableRidesScreen(
+                        rides = availableRides,
+                        hasActiveRide = activeRide != null,
+                        isOfflineCache = isOfflineCache,
+                        acceptingRideId = acceptingRideId,
+                        onAcceptRide = onAcceptRide,
+                        onRefuseRide = onDeclineIncomingRide,
+                        onOpenReception = onOpenRideReception,
+                        onSimulateRide = onSimulateIncomingRide,
+                        driverProfile = profile,
+                        onOpenPlateGenerator = { selectedTab = 2 }
                     )
 
-                    // Tab 1: Mes courses
-                    NavigationBarItem(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        icon = {
-                            BadgedBox(
-                                badge = {
-                                    if (activeRide != null) {
-                                        Badge(
-                                            containerColor = GreenPrimary,
-                                            contentColor = Color.White
-                                        ) {
-                                            Text("1")
-                                        }
-                                    }
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = if (selectedTab == 1) Icons.Filled.DirectionsCar else Icons.Outlined.DirectionsCar,
-                                    contentDescription = "Mes courses"
-                                )
-                            }
-                        },
-                        label = {
-                            Text(
-                                text = "Mes courses",
-                                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = GreenPrimary,
-                            selectedTextColor = GreenPrimary,
-                            indicatorColor = GreenContainer,
-                            unselectedIconColor = InkMuted,
-                            unselectedTextColor = InkMuted
-                        )
+                    1 -> MyRidesScreen(
+                        activeRide = activeRide,
+                        historyRides = historyRides,
+                        onCompleteRide = onCompleteRide,
+                        onReleaseRide = onReleaseRide,
+                        onNavigateToAvailable = { selectedTab = 0 }
                     )
 
-                    // Tab 2: Compte
-                    NavigationBarItem(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        icon = {
-                            Icon(
-                                imageVector = if (selectedTab == 2) Icons.Filled.Person else Icons.Outlined.Person,
-                                contentDescription = "Compte chauffeur"
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = "Compte",
-                                fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = GreenPrimary,
-                            selectedTextColor = GreenPrimary,
-                            indicatorColor = GreenContainer,
-                            unselectedIconColor = InkMuted,
-                            unselectedTextColor = InkMuted
-                        )
+                    2 -> AccountScreen(
+                        profile = profile,
+                        isAlertsHealthy = isAlertsHealthy,
+                        onToggleAvailability = onToggleAvailability,
+                        onUpdatePlates = onUpdatePlates,
+                        onTestSoundAndVibration = onTestSoundAndVibration,
+                        onOpenNotificationSettings = onOpenNotificationSettings,
+                        onOpenBatterySettings = onOpenBatterySettings,
+                        onDeleteAccount = onDeleteAccount,
+                        onSignOut = onSignOut
                     )
                 }
             }
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+        }
+
+        // Fullscreen 'Réception de course' Overlay when incomingRideOffer != null
+        AnimatedVisibility(
+            visible = incomingRideOffer != null,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
         ) {
-            when (selectedTab) {
-                0 -> AvailableRidesScreen(
-                    rides = availableRides,
-                    hasActiveRide = activeRide != null,
-                    isOfflineCache = isOfflineCache,
-                    acceptingRideId = acceptingRideId,
-                    onAcceptRide = onAcceptRide
-                )
-
-                1 -> MyRidesScreen(
-                    activeRide = activeRide,
-                    historyRides = historyRides,
-                    onCompleteRide = onCompleteRide,
-                    onReleaseRide = onReleaseRide,
-                    onNavigateToAvailable = { selectedTab = 0 }
-                )
-
-                2 -> AccountScreen(
-                    profile = profile,
-                    isAlertsHealthy = isAlertsHealthy,
-                    onToggleAvailability = onToggleAvailability,
-                    onUpdatePlates = onUpdatePlates,
-                    onTestSoundAndVibration = onTestSoundAndVibration,
-                    onOpenNotificationSettings = onOpenNotificationSettings,
-                    onOpenBatterySettings = onOpenBatterySettings,
-                    onDeleteAccount = onDeleteAccount,
-                    onSignOut = onSignOut
+            incomingRideOffer?.let { offer ->
+                RideReceptionScreen(
+                    ride = offer,
+                    isAccepting = acceptingRideId == offer.id,
+                    onAccept = onAcceptIncomingRide,
+                    onDecline = onDeclineIncomingRide
                 )
             }
         }

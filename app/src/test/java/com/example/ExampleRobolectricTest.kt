@@ -60,13 +60,15 @@ class ExampleRobolectricTest {
 
     @Test
     fun `test optional plate driver profile`() {
-        // Driver registering without plate initially
+        // Driver registering with license or without license
         val profileWithoutPlate = DriverProfile(
             uid = "driver_2",
             displayName = "Kouassi Jean",
             phone = "+225 05 12 34 56 78",
             plate = "",
             driverBadgeNumber = "",
+            hasLicense = false,
+            licenseNumber = "SANS PERMIS",
             status = DriverStatus.APPROVED,
             available = true,
             ratingAverage = 5.0,
@@ -74,6 +76,8 @@ class ExampleRobolectricTest {
         )
         assertTrue(profileWithoutPlate.plate.isEmpty())
         assertTrue(profileWithoutPlate.driverBadgeNumber.isEmpty())
+        assertEquals(false, profileWithoutPlate.hasLicense)
+        assertEquals("SANS PERMIS", profileWithoutPlate.licenseNumber)
         assertEquals(DriverStatus.APPROVED, profileWithoutPlate.status)
     }
 
@@ -97,5 +101,41 @@ class ExampleRobolectricTest {
         assertEquals(1000, ride.priceFcfa)
         assertEquals(RideStatus.PENDING, ride.status)
         assertNotNull(ride.pickupLat)
+    }
+
+    @Test
+    fun `test ride reception strings and details`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val title = context.getString(R.string.ride_reception_title)
+        val accept = context.getString(R.string.btn_accept_ride)
+        val refuse = context.getString(R.string.btn_refuse_ride)
+        val priceLabel = context.getString(R.string.estimated_price_label)
+
+        assertEquals("Réception de course", title)
+        assertEquals("Accepter", accept)
+        assertEquals("Refuser", refuse)
+        assertEquals("Prix estimé", priceLabel)
+
+        // Incoming ride request with required fields: depart, destination, estimated price
+        val incomingOffer = Ride(
+            id = "offer_dabou_202",
+            service = ServiceType.TAXI,
+            status = RideStatus.PENDING,
+            pickupAddress = "Gare Routière UTB Dabou",
+            pickupLat = 5.3265,
+            pickupLng = -4.3792,
+            destinationAddress = "Mairie de Dabou",
+            destinationLat = 5.3195,
+            destinationLng = -4.3725,
+            distanceKm = 3.4,
+            durationMin = 9,
+            priceFcfa = 1200,
+            clientFirstName = "Mamadou T."
+        )
+
+        assertEquals("Gare Routière UTB Dabou", incomingOffer.pickupAddress)
+        assertEquals("Mairie de Dabou", incomingOffer.destinationAddress)
+        assertEquals(1200, incomingOffer.priceFcfa)
+        assertTrue(incomingOffer.priceFcfa > 0)
     }
 }

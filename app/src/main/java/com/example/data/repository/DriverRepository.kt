@@ -43,8 +43,51 @@ class DriverRepository(
     val isOfflineCacheMode: StateFlow<Boolean> = _isOfflineCacheMode.asStateFlow()
 
     init {
-        // Sync real Firestore pending rides if reachable
+        // Initialize default seed rides if database is empty so drivers can test reception immediately
         scope.launch(Dispatchers.IO) {
+            val pendingList = rideDao.getPendingRides().firstOrNull()
+            if (pendingList.isNullOrEmpty()) {
+                val defaultRides = listOf(
+                    Ride(
+                        id = "ride_dabou_1",
+                        service = ServiceType.TAXI,
+                        status = RideStatus.PENDING,
+                        pickupAddress = "Marché Central de Dabou",
+                        pickupLat = 5.3250,
+                        pickupLng = -4.3780,
+                        destinationAddress = "Hôpital Général de Dabou",
+                        destinationLat = 5.3210,
+                        destinationLng = -4.3710,
+                        distanceKm = 2.8,
+                        durationMin = 8,
+                        priceFcfa = 1000,
+                        clientFirstName = "Awa Koné",
+                        notes = "Attente devant l'entrée principale du marché",
+                        contact = ClientContact("+2250708091011")
+                    ),
+                    Ride(
+                        id = "ride_dabou_2",
+                        service = ServiceType.DELIVERY,
+                        status = RideStatus.PENDING,
+                        pickupAddress = "Pharmacie du Centre Dabou",
+                        pickupLat = 5.3235,
+                        pickupLng = -4.3755,
+                        destinationAddress = "Quartier Dialogue, Rue des Manguiers",
+                        destinationLat = 5.3180,
+                        destinationLng = -4.3650,
+                        distanceKm = 4.2,
+                        durationMin = 12,
+                        priceFcfa = 1500,
+                        clientFirstName = "M. Koffi Brou",
+                        packageDetails = "Colis urgent : Médicaments et ordonnance",
+                        notes = "Sonner au portail bleu à l'arrivée",
+                        contact = ClientContact("+2250506070809")
+                    )
+                )
+                rideDao.insertRides(defaultRides.map { RideEntity.fromDomain(it) })
+            }
+
+            // Sync real Firestore pending rides if reachable
             runCatching {
                 firebaseService.observeFirestorePendingRides().collect { remoteRides ->
                     if (remoteRides.isNotEmpty()) {
@@ -91,7 +134,9 @@ class DriverRepository(
         password: String,
         phone: String,
         plate: String = "",
-        driverBadge: String = ""
+        driverBadge: String = "",
+        hasLicense: Boolean = true,
+        licenseNumber: String = ""
     ): Result<Unit> = withContext(Dispatchers.IO) {
         val cleanEmail = email.trim()
         val cleanPassword = password.trim()
@@ -99,6 +144,7 @@ class DriverRepository(
         val cleanBadge = driverBadge.trim().uppercase()
         val cleanPhone = phone.trim()
         val cleanName = displayName.trim()
+        val cleanLicense = if (hasLicense) licenseNumber.trim().uppercase() else "SANS PERMIS"
 
         if (cleanName.length < 2) {
             return@withContext Result.failure(IllegalArgumentException("Veuillez saisir votre nom complet."))
@@ -111,6 +157,9 @@ class DriverRepository(
         }
         if (cleanPhone.length < 8) {
             return@withContext Result.failure(IllegalArgumentException("Veuillez saisir un numéro de téléphone valide."))
+        }
+        if (hasLicense && cleanLicense.length < 3) {
+            return@withContext Result.failure(IllegalArgumentException("Veuillez renseigner votre numéro de permis de conduire ou cocher 'Sans permis'."))
         }
         val finalPlate = if (cleanPlate.isNotBlank()) cleanPlate else PlateGenerator.generateVehiclePlate()
         if (finalPlate.length !in 4..14) {
@@ -129,6 +178,8 @@ class DriverRepository(
             phone = cleanPhone,
             plate = finalPlate,
             driverBadgeNumber = cleanBadge,
+            hasLicense = hasLicense,
+            licenseNumber = cleanLicense,
             status = DriverStatus.APPROVED,
             available = true,
             ratingAverage = 5.0,
@@ -271,6 +322,13 @@ class DriverRepository(
         Result.success(Unit)
     }
 
+    suspend fun updateLicense(hasLicense: Boolean, licenseNumber: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val profile = driverProfileDao.getProfile() ?: return@withContext Result.failure(IllegalStateException("Profil introuvable"))
+        val cleanLicense = if (hasLicense) licenseNumber.trim().uppercase() else "SANS PERMIS"
+        driverProfileDao.updateLicense(profile.uid, hasLicense, cleanLicense)
+        Result.success(Unit)
+    }
+
     suspend fun setAvailability(available: Boolean) = withContext(Dispatchers.IO) {
         val profile = driverProfileDao.getProfile() ?: return@withContext
         driverProfileDao.updateAvailability(profile.uid, available)
@@ -364,6 +422,79 @@ class DriverRepository(
         }
         firebaseService.signOut()
         driverProfileDao.clearProfile()
+    }
+
+    suspend fun declineRide(rideId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        // Driver declines this offer - remove it from driver's incoming queue
+        rideDao.deleteRide(rideId)
+        Result.success(Unit)
+    }
+
+    suspend fun simulateNewRideOffer(): Ride = withContext(Dispatchers.IO) {
+        val scenarios = listOf(
+            Ride(
+                id = "sim_ride_" + System.currentTimeMillis().toString().takeLast(6),
+                service = ServiceType.TAXI,
+                status = RideStatus.PENDING,
+                pickupAddress = "Gare Routière UTB Dabou",
+                pickupLat = 5.3265,
+                pickupLng = -4.3792,
+                destinationAddress = "Mairie de Dabou (Centre administratif)",
+                destinationLat = 5.3195,
+                destinationLng = -4.3725,
+                distanceKm = 3.4,
+                durationMin = 9,
+                priceFcfa = 1200,
+                clientFirstName = "Mamadou T.",
+                notes = "Client prêt devant le guichet UTB",
+                contact = ClientContact("+2250711223344")
+            ),
+            Ride(
+                id = "sim_ride_" + System.currentTimeMillis().toString().takeLast(6),
+                service = ServiceType.DELIVERY,
+                status = RideStatus.PENDING,
+                pickupAddress = "Supermarché Central Dabou",
+                pickupLat = 5.3240,
+                pickupLng = -4.3760,
+                destinationAddress = "Quartier TP Dabou, près de l'école",
+                destinationLat = 5.3150,
+                destinationLng = -4.3680,
+                distanceKm = 4.6,
+                durationMin = 14,
+                priceFcfa = 1800,
+                clientFirstName = "Sarah B.",
+                packageDetails = "Carton moyen de provisions alimentaires",
+                notes = "Appeler à l'arrivée",
+                contact = ClientContact("+2250555667788")
+            ),
+            Ride(
+                id = "sim_ride_" + System.currentTimeMillis().toString().takeLast(6),
+                service = ServiceType.TAXI,
+                status = RideStatus.PENDING,
+                pickupAddress = "Carrefour Station Total Dabou",
+                pickupLat = 5.3290,
+                pickupLng = -4.3810,
+                destinationAddress = "Lycée Moderne Leboutou Dabou",
+                destinationLat = 5.3200,
+                destinationLng = -4.3690,
+                distanceKm = 2.9,
+                durationMin = 8,
+                priceFcfa = 1000,
+                clientFirstName = "Eric D.",
+                notes = "2 passagers avec sacs",
+                contact = ClientContact("+2250102030405")
+            )
+        )
+        val selected = scenarios.random()
+        rideDao.insertRide(RideEntity.fromDomain(selected))
+        alertsManager.triggerAlertSoundAndVibration()
+        alertsManager.postNewRideNotification(
+            rideId = selected.id,
+            serviceLabel = selected.service.label,
+            distanceKm = selected.distanceKm,
+            priceFcfa = selected.priceFcfa
+        )
+        selected
     }
 
     fun toggleOfflineCacheMode() {

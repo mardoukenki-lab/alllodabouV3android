@@ -61,11 +61,14 @@ interface DriverProfileDao {
     @Query("UPDATE driver_profile SET driverBadgeNumber = :badge WHERE uid = :uid")
     suspend fun updateDriverBadge(uid: String, badge: String)
 
+    @Query("UPDATE driver_profile SET hasLicense = :hasLicense, licenseNumber = :licenseNumber WHERE uid = :uid")
+    suspend fun updateLicense(uid: String, hasLicense: Boolean, licenseNumber: String)
+
     @Query("DELETE FROM driver_profile")
     suspend fun clearProfile()
 }
 
-@Database(entities = [RideEntity::class, DriverProfileEntity::class], version = 3, exportSchema = false)
+@Database(entities = [RideEntity::class, DriverProfileEntity::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun rideDao(): RideDao
     abstract fun driverProfileDao(): DriverProfileDao

@@ -22,15 +22,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
@@ -40,6 +44,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -58,6 +64,8 @@ import com.example.ui.components.ServiceBadge
 import com.example.ui.components.launchAddressSearch
 import com.example.ui.components.launchNavigationIntent
 import com.example.ui.theme.AccentRed
+import com.example.ui.theme.RedBorder
+import com.example.ui.theme.RedContainer
 import com.example.ui.theme.BgCanvas
 import com.example.ui.theme.BorderInput
 import com.example.ui.theme.BorderLight
@@ -75,6 +83,9 @@ fun AvailableRidesScreen(
     isOfflineCache: Boolean,
     acceptingRideId: String?,
     onAcceptRide: (Ride) -> Unit,
+    onRefuseRide: (Ride) -> Unit = {},
+    onOpenReception: (Ride) -> Unit = {},
+    onSimulateRide: () -> Unit = {},
     driverProfile: DriverProfile? = null,
     onOpenPlateGenerator: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -98,7 +109,7 @@ fun AvailableRidesScreen(
                     MissingPlateBanner(onOpenGenerator = onOpenPlateGenerator)
                     Spacer(modifier = Modifier.height(24.dp))
                 }
-                EmptyAvailableRidesState()
+                EmptyAvailableRidesState(onSimulateRide = onSimulateRide)
             }
         } else {
             LazyColumn(
@@ -114,8 +125,58 @@ fun AvailableRidesScreen(
                     }
                 }
 
+                // Simulation banner to quickly test the 'Réception de course' view
                 item {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSimulateRide() }
+                            .testTag("simulate_ride_reception_button"),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = GreenContainer),
+                        border = BorderStroke(1.dp, GreenBorder)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.FlashOn,
+                                    contentDescription = null,
+                                    tint = GreenPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = "Simuler une réception de course",
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = InkDark
+                                        )
+                                    )
+                                    Text(
+                                        text = "Ouvre la vue 'Réception de course' avec alerte",
+                                        style = MaterialTheme.typography.bodySmall.copy(color = InkMuted)
+                                    )
+                                }
+                            }
+                            Icon(
+                                imageVector = Icons.Default.OpenInNew,
+                                contentDescription = null,
+                                tint = GreenPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                item {
                     Text(
                         text = "${rides.size} course${if (rides.size > 1) "s" else ""} disponible${if (rides.size > 1) "s" else ""}",
                         style = MaterialTheme.typography.titleMedium.copy(
@@ -131,7 +192,9 @@ fun AvailableRidesScreen(
                         hasActiveRide = hasActiveRide,
                         isOfflineCache = isOfflineCache,
                         isAccepting = acceptingRideId == ride.id,
-                        onAccept = { onAcceptRide(ride) }
+                        onAccept = { onAcceptRide(ride) },
+                        onRefuse = { onRefuseRide(ride) },
+                        onOpenReception = { onOpenReception(ride) }
                     )
                 }
 
@@ -227,12 +290,17 @@ fun AvailableRideCard(
     isOfflineCache: Boolean,
     isAccepting: Boolean,
     onAccept: () -> Unit,
+    onRefuse: () -> Unit = {},
+    onOpenReception: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onOpenReception() }
+            .testTag("ride_card_${ride.id}"),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -247,7 +315,35 @@ fun AvailableRideCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ServiceBadge(service = ride.service)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ServiceBadge(service = ride.service)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFF1F5F9),
+                        modifier = Modifier.clickable { onOpenReception() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Réception",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = InkMuted,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Icon(
+                                imageVector = Icons.Default.OpenInNew,
+                                contentDescription = "Ouvrir réception",
+                                tint = InkMuted,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                    }
+                }
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
@@ -392,9 +488,10 @@ fun AvailableRideCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Action row: Itinerary preview + Accept Button
+            // Action row: Itinerary preview + Refuser + Accepter
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Itinerary Preview Button (Only if valid coordinates exist)
@@ -420,17 +517,46 @@ fun AvailableRideCard(
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.width(10.dp))
                 }
 
-                // Accept Button
+                // Bouton 'Refuser'
+                OutlinedButton(
+                    onClick = onRefuse,
+                    enabled = !isAccepting,
+                    modifier = Modifier
+                        .height(48.dp)
+                        .testTag("refuse_ride_card_button"),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = AccentRed
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, RedBorder)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Refuser",
+                        tint = AccentRed,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Refuser",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = AccentRed
+                        )
+                    )
+                }
+
+                // Bouton 'Accepter'
                 val canAccept = !hasActiveRide && !isOfflineCache
                 Button(
                     onClick = onAccept,
                     enabled = canAccept && !isAccepting,
                     modifier = Modifier
                         .weight(1f)
-                        .height(48.dp),
+                        .height(48.dp)
+                        .testTag("accept_ride_card_button"),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = GreenPrimary,
@@ -443,11 +569,14 @@ fun AvailableRideCard(
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Acceptation en cours...")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "En cours...",
+                            style = MaterialTheme.typography.labelMedium.copy(color = Color.White)
+                        )
                     } else if (hasActiveRide) {
                         Text(
-                            text = "Course en cours active",
+                            text = "Active",
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = InkMuted
@@ -455,7 +584,7 @@ fun AvailableRideCard(
                         )
                     } else if (isOfflineCache) {
                         Text(
-                            text = "Hors ligne (cache seul)",
+                            text = "Hors ligne",
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = InkMuted
@@ -469,10 +598,10 @@ fun AvailableRideCard(
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "Accepter la course",
-                                style = MaterialTheme.typography.titleMedium.copy(
+                                text = "Accepter",
+                                style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
@@ -487,6 +616,7 @@ fun AvailableRideCard(
 
 @Composable
 fun EmptyAvailableRidesState(
+    onSimulateRide: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -530,5 +660,31 @@ fun EmptyAvailableRidesState(
                 textAlign = TextAlign.Center
             )
         )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onSimulateRide,
+            modifier = Modifier
+                .height(48.dp)
+                .testTag("empty_simulate_ride_button"),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+        ) {
+            Icon(
+                imageVector = Icons.Default.FlashOn,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "⚡ Simuler une réception de course",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            )
+        }
     }
 }

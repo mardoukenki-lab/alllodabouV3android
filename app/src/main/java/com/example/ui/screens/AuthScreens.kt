@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -39,6 +40,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -94,7 +97,7 @@ import kotlinx.coroutines.launch
 fun AuthScreen(
     isLoading: Boolean,
     onLoginEmail: (email: String, pass: String) -> Unit,
-    onRegisterEmail: (name: String, email: String, pass: String, phone: String, plate: String, driverBadge: String) -> Unit,
+    onRegisterEmail: (name: String, email: String, pass: String, phone: String, plate: String, driverBadge: String, hasLicense: Boolean, licenseNumber: String) -> Unit,
     onForgotPassword: (email: String, onResult: (Boolean, String) -> Unit) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
@@ -112,6 +115,8 @@ fun AuthScreen(
     var phone by remember { mutableStateOf("+225 ") }
     var plate by remember { mutableStateOf("") }
     var driverBadge by remember { mutableStateOf("") }
+    var isWithoutLicense by remember { mutableStateOf(false) }
+    var licenseNumber by remember { mutableStateOf("") }
 
     var passwordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -480,32 +485,234 @@ fun AuthScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Notice: Vehicle Plate is mandatory
+                    // 1. Permis de conduire (Numéro ou Sans permis)
+                    Text(
+                        text = "Permis de conduire",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = InkDark
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFFEF3C7),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDE68A))
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                isWithoutLicense = !isWithoutLicense
+                                if (isWithoutLicense) {
+                                    licenseNumber = ""
+                                }
+                            },
+                        color = if (isWithoutLicense) GreenContainer.copy(alpha = 0.5f) else Color(0xFFF8FAFC),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isWithoutLicense) GreenPrimary else BorderInput
+                        )
                     ) {
                         Row(
-                            modifier = Modifier.padding(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "⚠️ La plaque d'immatriculation du véhicule est obligatoire pour tous les chauffeurs Allô Dabou. Si vous n'en avez pas encore, cliquez sur '🎲 Générer plaque CI' pour en créer une instantanément.",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color(0xFF92400E),
-                                    fontSize = 12.sp,
-                                    lineHeight = 16.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                            Checkbox(
+                                checked = isWithoutLicense,
+                                onCheckedChange = { checked ->
+                                    isWithoutLicense = checked
+                                    if (checked) {
+                                        licenseNumber = ""
+                                    }
+                                },
+                                colors = CheckboxDefaults.colors(checkedColor = GreenPrimary)
                             )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Je n'ai pas de permis (Sans permis)",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = InkDark
+                                    )
+                                )
+                                Text(
+                                    text = "Cochez cette case si vous n'avez pas de permis de conduire.",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = InkMuted,
+                                        fontSize = 11.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    if (!isWithoutLicense) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = licenseNumber,
+                            onValueChange = { licenseNumber = it.uppercase() },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Numéro de permis de conduire (ex: CI-482910)", color = InkMuted) },
+                            leadingIcon = {
+                                Icon(Icons.Default.CreditCard, contentDescription = null, tint = GreenPrimary)
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = GreenPrimary,
+                                unfocusedBorderColor = BorderInput
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Characters,
+                                imeAction = ImeAction.Next
+                            )
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFFECFDF5),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA7F3D0))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(15.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Option sans permis active : vous pouvez exercer pour les livraisons à vélo ou tricycle.",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = GreenDark, fontSize = 11.sp)
+                                )
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // 1. Plaque d'immatriculation Chauffeur (Optional)
+                    // 2. Numéro d'immatriculation du véhicule (avec générateur)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Numéro d'immatriculation du véhicule *",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = InkDark
+                            )
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = GreenContainer,
+                            modifier = Modifier.clickable {
+                                plate = com.example.data.model.PlateGenerator.generateVehiclePlate()
+                            }
+                        ) {
+                            Text(
+                                text = "🎲 Générer",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = GreenPrimary,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = plate,
+                        onValueChange = { plate = it.uppercase() },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Ex: 7421-HJ-01 (ou cliquez sur Générer)", color = InkMuted) },
+                        leadingIcon = {
+                            Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = GreenPrimary)
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { plate = com.example.data.model.PlateGenerator.generateVehiclePlate() }) {
+                                Icon(Icons.Default.DirectionsCar, contentDescription = "Générer", tint = GreenPrimary)
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                            imeAction = ImeAction.Next
+                        ),
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GreenPrimary,
+                            unfocusedBorderColor = BorderInput
+                        )
+                    )
+
+                    // Notice if empty or Plate Preview
+                    if (plate.isBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "💡 Vous n'avez pas de plaque ? Cliquez sur '🎲 Générer' ci-dessus pour en créer une.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = InkMuted,
+                                fontSize = 11.sp
+                            )
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        // Visual Côte d'Ivoire Plate preview
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF9FAFB),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF1E293B)),
+                            shadowElevation = 1.dp
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp, horizontal = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = Color(0xFF0038A8),
+                                    modifier = Modifier.size(width = 24.dp, height = 24.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = "CI",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 9.sp
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = plate,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = Color(0xFF0F172A),
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = 2.sp,
+                                        fontSize = 15.sp
+                                    )
+                                )
+
+                                Text(
+                                    text = "01",
+                                    color = Color(0xFF64748B),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(end = 4.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // 3. Matricule chauffeur Allô Dabou (Optionnel)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -546,64 +753,6 @@ fun AuthScreen(
                         },
                         trailingIcon = {
                             IconButton(onClick = { driverBadge = com.example.data.model.PlateGenerator.generateDriverBadge() }) {
-                                Icon(Icons.Default.DirectionsCar, contentDescription = "Générer", tint = GreenPrimary)
-                            }
-                        },
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Characters,
-                            imeAction = ImeAction.Next
-                        ),
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GreenPrimary,
-                            unfocusedBorderColor = BorderInput
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // 2. Plaque du véhicule (Obligatoire)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Plaque d'immatriculation véhicule (Obligatoire) *",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = InkDark
-                            )
-                        )
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = GreenContainer,
-                            modifier = Modifier.clickable {
-                                plate = com.example.data.model.PlateGenerator.generateVehiclePlate()
-                            }
-                        ) {
-                            Text(
-                                text = "🎲 Générer plaque CI",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = GreenPrimary,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = plate,
-                        onValueChange = { plate = it.uppercase() },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Ex: 7421-HJ-01 (Obligatoire ou générer)", color = InkMuted) },
-                        leadingIcon = {
-                            Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = GreenPrimary)
-                        },
-                        trailingIcon = {
-                            IconButton(onClick = { plate = com.example.data.model.PlateGenerator.generateVehiclePlate() }) {
                                 Icon(Icons.Default.DirectionsCar, contentDescription = "Générer", tint = GreenPrimary)
                             }
                         },
@@ -671,17 +820,36 @@ fun AuthScreen(
                                 errorMessage = "Veuillez saisir un numéro de téléphone valide."
                                 return@Button
                             }
+
+                            // License check: if not "Sans permis", license number is required
+                            val cleanLicense = licenseNumber.trim().uppercase()
+                            if (!isWithoutLicense && cleanLicense.length < 3) {
+                                errorMessage = "Veuillez renseigner votre numéro de permis de conduire ou cocher la case 'Sans permis'."
+                                return@Button
+                            }
+
+                            // Vehicle plate check: required, but can be generated
                             val cleanPlate = plate.trim().uppercase()
                             val cleanBadge = driverBadge.trim().uppercase()
                             if (cleanPlate.isBlank()) {
-                                errorMessage = "La plaque d'immatriculation du véhicule est obligatoire. Cliquez sur '🎲 Générer plaque CI' si vous n'en avez pas."
+                                errorMessage = "Veuillez renseigner votre immatriculation ou cliquer sur '🎲 Générer'."
                                 return@Button
                             }
                             if (cleanPlate.length !in 4..14) {
-                                errorMessage = "La plaque d'immatriculation doit comporter entre 4 et 14 caractères (ex: 7421-HJ-01)."
+                                errorMessage = "L'immatriculation doit comporter entre 4 et 14 caractères (ex: 7421-HJ-01)."
                                 return@Button
                             }
-                            onRegisterEmail(displayName.trim(), email.trim(), password.trim(), phone.trim(), cleanPlate, cleanBadge)
+
+                            onRegisterEmail(
+                                displayName.trim(),
+                                email.trim(),
+                                password.trim(),
+                                phone.trim(),
+                                cleanPlate,
+                                cleanBadge,
+                                !isWithoutLicense,
+                                if (!isWithoutLicense) cleanLicense else "SANS PERMIS"
+                            )
                         }
                     },
                     enabled = !isLoading,
